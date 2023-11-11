@@ -99,17 +99,21 @@ training_args = TrainingArguments(
     logging_steps=10,
     save_strategy="no",
     optim="adamw_torch_fused",
+    remove_unused_columns=False,
     max_steps=total_steps if enable_profiler else -1,
     **{k:v for k,v in config.items() if k != 'lora_config'}
 )
 
-data_collator = TaskPrefixDataCollator(tokenizer=tokenizer, model=model)
+data_collator = TaskPrefixDataCollator()
 
 with profiler:
     # Create Trainer instance
     trainer = TaskPrefixTrainer(
+        alpha=0.5,
+        output_rationale=False,
         model=model,
         args=training_args,
+        tokenizer=tokenizer,
         train_dataset=train_dataset,
         data_collator=data_collator,
         callbacks=[profiler_callback] if enable_profiler else [],

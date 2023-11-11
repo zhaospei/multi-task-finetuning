@@ -2,6 +2,7 @@ import torch
 from transformers import AutoModelForCausalLM, CodeLlamaTokenizer
 from tqdm import tqdm
 from peft import PeftModel
+import datasets
 import json
 
 def read_contextual_medit_examples(filename):
@@ -20,6 +21,9 @@ def write_string_to_file(absolute_filename, string):
 
 def gen(model_base, model_peft, input_file, output_file):
     tokenizer = CodeLlamaTokenizer.from_pretrained(model_base)
+    dataset_id = "zhaospei/cmg-history"
+    dataset = datasets.load_dataset(dataset_id, split="test")
+
 
     model = AutoModelForCausalLM.from_pretrained(model_base, load_in_8bit=True, device_map='auto', torch_dtype=torch.float16)
 
@@ -27,9 +31,10 @@ def gen(model_base, model_peft, input_file, output_file):
 
     model.eval()
 
-    examples = read_contextual_medit_examples(input_file)
-
-    for eval_prompt in tqdm(examples):
+    # examples = read_contextual_medit_examples(input_file)
+    prompt_msg = f"Give type of this code:\n{{vccs}}{{diff}}\nType:"
+    for data in tqdm(dataset):
+        eval_prompt = prompt_msg.format(vccs=data['vccs_msg'], diff=data['diff'])
         model_input = tokenizer(eval_prompt, return_tensors="pt").to("cuda")
 
         output = ''
@@ -39,4 +44,4 @@ def gen(model_base, model_peft, input_file, output_file):
         write_string_to_file(output_file, '' + output + '<nl>')
 
 if __name__ == "__main__":
-    gen('codellama/CodeLlama-7b-hf', '/home/dungbt/llama/tmp/code-llama-output', 'test.input.jsonl', 'test.codellama.reload.output')
+    gen('codellama/CodeLlama-7b-hf', '/home/buituandung/multi-task-finetuning/tmp/code-llama-output', 'test.input.jsonl', 'test.codellama.reload.output')
